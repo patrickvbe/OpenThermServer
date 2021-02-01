@@ -23,9 +23,10 @@ struct ValueNode
 class ControlValues
 {
   public:
-    ValueNode   nodes[VALUE_BUFSIZE];
-    int         nextFreeNode = 0;
-    char        wifiStatus = '-'; // '-' not connected, '+' connected, '#' got IP.
+    unsigned long   timestampsec = 0;
+    ValueNode       nodes[VALUE_BUFSIZE];
+    int             nextFreeNode = 0;
+    char            wifiStatus = '-'; // '-' not connected, '+' connected, '#' got IP.
 };
 
 #endif // CONTROLVALUES_H
