@@ -3,6 +3,10 @@
 
 #include "Arduino.h"
 
+#ifndef ICACHE_RAM_ATTR
+#define ICACHE_RAM_ATTR
+#endif
+
 // Messages types
 #define OT_MSGTYPE_READ_DATA          B000
 #define OT_MSGTYPE_READ_ACK           B100
@@ -108,6 +112,7 @@ struct OpenthermData {
 class OPENTHERM {
   public:
     OPENTHERM(byte send_pin, byte rec_pin);
+    ~OPENTHERM();
 
     /** Immediately send out Opentherm data packet to line connected on given pin.
      * Completed data transfer is indicated by isSent() function.
@@ -116,7 +121,7 @@ class OPENTHERM {
      * @param data Opentherm data packet.
      * @param callback if provided, callback function is called once data packet is sent.
      */
-    void send(byte pin, OpenthermData &data, void (*callback)() = NULL);
+    void send(byte pin, OpenthermData &data, void (*callback)() = nullptr);
 
     /** Use this function to check whether send() function already finished sending data packed to line.
      * @return true if data packet has been sent, false otherwise.
@@ -134,15 +139,12 @@ class OPENTHERM {
      */
     void printToSerial(OpenthermData &data);
 
-#ifdef AVR
-    static void _timerISR(); // this function needs to be public since its attached as interrupt handler
-#endif // END ESP8266
-#ifdef ESP8266
     static void ICACHE_RAM_ATTR _timerISR(); // this function needs to be public since its attached as interrupt handler
-#endif // END ESP8266
+    static void ICACHE_RAM_ATTR _inputISR(); // this function needs to be public since its attached as interrupt handler
 
   private:  
-    byte send_pin;
+    const byte send_pin;
+    const byte rec_pin;
     void (*_callback)();
     volatile unsigned long _data;
     volatile byte _clock;
@@ -155,6 +157,12 @@ class OPENTHERM {
     bool _checkParity(unsigned long val);
     void _writeBit(byte high, byte pos);
     void _callCallback();
+
+    OPENTHERM** _isr = nullptr;
+    volatile byte read_state;
+    volatile unsigned long response;
+    volatile unsigned long readTimestamp;
+    volatile byte readBitIndex;
 };
 
 #endif

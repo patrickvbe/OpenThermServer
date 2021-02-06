@@ -10,16 +10,57 @@
 #define MODE_WRITE 4    // writing data with timer
 #define MODE_SENT 5     // all data written to output
 
-#define MODE_ERROR_MANCH 8  // manchester protocol data transfer error
-#define MODE_ERROR_TOUT 9   // read timeout
+#define MODE_START_BIT 6
+#define MODE_RESPONSE_INVALID 7
+#define MODE_RECEIVING 8
+#define MODE_RECEIVED 8
+
+#define MODE_ERROR_MANCH 20  // manchester protocol data transfer error
+#define MODE_ERROR_TOUT 21   // read timeout
 
 #define STOP_BIT_POS 33
 
-OPENTHERM::OPENTHERM(byte send_pin, byte rec_pin)
-: _mode(MODE_IDLE),
-  _active(false)
+// We define a few ISRs to use. After that, it's over... But you can add more, if you need more.
+static OPENTHERM* ISR1this = nullptr;
+static void ICACHE_RAM_ATTR ISR1()
 {
+  ISR1this->_inputISR();
 }
+static OPENTHERM* ISR2this = nullptr;
+static void ICACHE_RAM_ATTR ISR2()
+{
+  ISR2this->_inputISR();
+}
+
+OPENTHERM::OPENTHERM(byte spin, byte rpin)
+: _mode(MODE_IDLE),
+  _active(false),
+  send_pin(spin),
+  rec_pin(rpin),
+  read_state(MODE_IDLE)
+{
+  if ( ISR1this == nullptr )
+  {
+    _isr = &ISR1this;
+    ISR1this = this;
+ 		attachInterrupt(digitalPinToInterrupt(rec_pin), ISR1, CHANGE);
+  }
+  if ( ISR2this == nullptr )
+  {
+    _isr = &ISR2this;
+    ISR2this = this;
+ 		attachInterrupt(digitalPinToInterrupt(rec_pin), ISR2, CHANGE);
+  }
+}
+
+OPENTHERM::~OPENTHERM(byte send_pin, byte rec_pin)
+{
+  if ( _isr ) *_isr = nullptr;  // Free the ISR
+}
+
+///////////////////////////////////////////////////////////////////
+// Code for sending
+///////////////////////////////////////////////////////////////////
 
 void OPENTHERM::send(byte pin, OpenthermData &data, void (*callback)())
 {
@@ -143,6 +184,53 @@ void OPENTHERM::_stopTimer() {
   interrupts();
 }
 #endif // END ESP8266
+
+///////////////////////////////////////////////////////////////////
+// Code for reading
+///////////////////////////////////////////////////////////////////
+
+void ICACHE_RAM_ATTR OPENTHERM::_inputISR()
+{
+	unsigned long newTs = micros();
+	if ( read_state == MODE_IDLE )
+		if (digitalRead(rec_pin) == HIGH) {
+			read_state == MODE_START_BIT;
+			readTimestamp = newTs;
+		}
+		else {
+			read_state = MODE_RESPONSE_INVALID;
+			readTimestamp = newTs;
+		}
+	}
+	else if (read_state == MODE_START_BIT) {
+		if ((newTs - readTimestamp < 750) && digitalRead(rec_pin) == LOW) {
+			read_state = MODE_RECEIVING;
+			readTimestamp = newTs;
+			readBitIndex = 0;
+		}
+		else {
+			read_state = MODE_RESPONSE_INVALID;
+			readTimestamp = newTs;
+		}
+	}
+	else if (read_state == MODE_RECEIVING) {
+		if ((newTs - readTimestamp) > 750) {
+			if (readBitIndex < 32) {
+				response = (response << 1) | !digitalRead(rec_pin);
+				readTimestamp = newTs;
+				readBitIndex++;
+			}
+			else { //stop bit
+				read_state = MODE_RECEIVED;
+				readTimestamp = newTs;
+			}
+		}
+	}
+}
+
+///////////////////////////////////////////////////////////////////
+// Generic helper funtions
+///////////////////////////////////////////////////////////////////
 
 // https://stackoverflow.com/questions/21617970/how-to-check-if-value-has-even-parity-of-bits-or-odd
 bool OPENTHERM::_checkParity(unsigned long val) {
