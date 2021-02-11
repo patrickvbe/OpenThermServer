@@ -1,23 +1,6 @@
 #include "opentherm.h"
 #include "Arduino.h"
 
-#define MODE_IDLE 0     // no operation
-
-#define MODE_LISTEN 1   // waiting for transmission to start
-#define MODE_READ 2     // reading 32-bit data frame
-#define MODE_RECEIVED 3 // data frame received with valid start and stop bit
-
-#define MODE_WRITE 4    // writing data with timer
-#define MODE_SENT 5     // all data written to output
-
-#define MODE_START_BIT 6
-#define MODE_RESPONSE_INVALID 7
-#define MODE_RECEIVING 8
-#define MODE_RECEIVED 8
-
-#define MODE_ERROR_MANCH 20  // manchester protocol data transfer error
-#define MODE_ERROR_TOUT 21   // read timeout
-
 #define STOP_BIT_POS 33
 
 // We define a few ISRs to use. After that, it's over... But you can add more, if you need more.
@@ -32,12 +15,12 @@ static void ICACHE_RAM_ATTR ISR2()
   ISR2this->_inputISR();
 }
 
-OPENTHERM::OPENTHERM(byte spin, byte rpin)
-: _mode(MODE_IDLE),
+OPENTHERM::OPENTHERM(byte spin, byte rpin, OpenThermMode mode)
+: _status(OpenThermStatus::IDLE),
   _active(false),
+  _mode(mode),
   send_pin(spin),
-  rec_pin(rpin),
-  read_state(MODE_IDLE)
+  rec_pin(rpin)
 {
   if ( ISR1this == nullptr )
   {
@@ -65,17 +48,10 @@ OPENTHERM::~OPENTHERM(byte send_pin, byte rec_pin)
 void OPENTHERM::send(byte pin, OpenthermData &data, void (*callback)())
 {
   _callback = callback;
-  _data = data.type;
-  _data = (_data << 12) | data.id;
-  _data = (_data << 8) | data.valueHB;
-  _data = (_data << 8) | data.valueLB;
-  if (!_checkParity(_data)) {
-    _data = _data | 0x80000000;
-  }
-
+  _data = data.Get();
   _clock = 1; // clock starts at HIGH
   _bitPos = 33; // count down (33 == start bit, 32-1 data, 0 == stop bit)
-  _mode = MODE_WRITE;
+  _status = OpenThermStatus::SENDING;
 
   _active = true;
   _startWriteTimer();
@@ -83,7 +59,7 @@ void OPENTHERM::send(byte pin, OpenthermData &data, void (*callback)())
 
 void OPENTHERM::stop() {
   _stop();
-  _mode = MODE_IDLE;
+  _status = OpenThermStatus::IDLE;
 }
 
 void OPENTHERM::_stop() {
@@ -94,7 +70,7 @@ void OPENTHERM::_stop() {
 }
 
 void OPENTHERM::_timerISR() {
-  if (_mode == MODE_WRITE) {
+  if (_status == OpenThermStatus::SENDING) {
     // write data to pin
     if (_bitPos == 33 || _bitPos == 0)  { // start bit
       _writeBit(1, _clock);
@@ -103,8 +79,9 @@ void OPENTHERM::_timerISR() {
       _writeBit(bitRead(_data, _bitPos - 1), _clock);
     }
     if (_clock == 0) {
-      if (_bitPos <= 0) { // check termination
-        _mode = MODE_SENT; // all data written
+      if (_bitPos <= 0) { // check termination, all sent
+        _status = _mode == OpenThermMode::MASTER ? OpenThermStatus::LISTEN : OpenThermStatus::IDLE;
+        sentTimestamp = micros();
         _stop();
         _callCallback();
       }
@@ -126,12 +103,12 @@ void OPENTHERM::_writeBit(byte high, byte clock) {
   }
 }
 
-bool OPENTHERM::isSent() {
-  return _mode == MODE_SENT;
+bool OPENTHERM::isIdle() {
+  return _status == OpenThermStatus::IDLE;
 }
 
 bool OPENTHERM::isError() {
-  return _mode == MODE_ERROR_TOUT;
+  return _status == OpenThermStatus::TIMEOUT || _status == OpenThermStatus::RECEIVED_INVALID;
 }
 
 void OPENTHERM::_callCallback() {
@@ -192,36 +169,37 @@ void OPENTHERM::_stopTimer() {
 void ICACHE_RAM_ATTR OPENTHERM::_inputISR()
 {
 	unsigned long newTs = micros();
-	if ( read_state == MODE_IDLE )
+	if ( _status == OpenThermStatus::LISTENING )
 		if (digitalRead(rec_pin) == HIGH) {
-			read_state == MODE_START_BIT;
+			_status == OpenThermStatus::START_BIT;
 			readTimestamp = newTs;
 		}
 		else {
-			read_state = MODE_RESPONSE_INVALID;
+			_status = _mode == OpenThermMode::MASTER ? OpenThermStatus::RECEIVED_INVALID : OpenThermStatus::LISTENING;
 			readTimestamp = newTs;
 		}
 	}
-	else if (read_state == MODE_START_BIT) {
+	else if (_status == OpenThermStatus::START_BIT) {
 		if ((newTs - readTimestamp < 750) && digitalRead(rec_pin) == LOW) {
-			read_state = MODE_RECEIVING;
+			_status = OpenThermStatus::RECEIVING;
 			readTimestamp = newTs;
 			readBitIndex = 0;
+      _data = 0;
 		}
 		else {
-			read_state = MODE_RESPONSE_INVALID;
+			_status = _mode == OpenThermMode::MASTER ? OpenThermStatus::RECEIVED_INVALID : OpenThermStatus::LISTENING;
 			readTimestamp = newTs;
 		}
 	}
-	else if (read_state == MODE_RECEIVING) {
+	else if (_status == OpenThermStatus::RECEIVING) {
 		if ((newTs - readTimestamp) > 750) {
 			if (readBitIndex < 32) {
-				response = (response << 1) | !digitalRead(rec_pin);
+				_data = (_data << 1) | !digitalRead(rec_pin);
 				readTimestamp = newTs;
 				readBitIndex++;
 			}
 			else { //stop bit
-				read_state = MODE_RECEIVED;
+				_status = OpenThermStatus::RECEIVED;
 				readTimestamp = newTs;
 			}
 		}
@@ -231,6 +209,68 @@ void ICACHE_RAM_ATTR OPENTHERM::_inputISR()
 ///////////////////////////////////////////////////////////////////
 // Generic helper funtions
 ///////////////////////////////////////////////////////////////////
+
+void OpenTherm::Process()
+{
+	if (st == OpenThermStatus::READY || st == OpenThermStatus::) return;
+
+  unsigned long newTs = micros();
+
+  if ( _mode == OpenThermMode::MASTER )
+  {
+    if ( _status > OpenThermStatus::DONE_STATUSSUS ) return;
+    if ( _status == OpenThermStatus::RECEIVED )
+    {
+      _message.Set(_data);
+      _status = _message.isValidResponse() ? OpenThermStatus::RECEIVED_VALID : OpenThermStatus::RECEIVED_INVALID;
+    }
+    else if ( newTs - sentTimestamp > 8000 )
+    {
+      _status = OpenThermStatus::TIMEOUT;
+    }
+  }
+  else
+  { // slave
+    if ( _status == OpenThermStatus::RECEIVED_VALID ) return;
+    if ( _status == OpenThermStatus::RECEIVED )
+    {
+      _message.Set(_data);
+      _status = _message.isValidRequest() ? OpenThermStatus::RECEIVED_VALID : OpenThermStatus::LISTENING;
+    }
+    else if ( st != OpenThermStatus::LISTENING && newTs - readTimestamp > 400000 )
+    {
+      _status = OpenThermStatus::LISTENING; // Timeout receiving message.
+    }
+  }
+
+	if (st != OpenThermStatus::NOT_INITIALIZED && (newTs - ts) > 1000000) {
+		status = OpenThermStatus::READY;
+		_dataStatus = OpenThermResponseStatus::TIMEOUT;
+		if (processResponseCallback != NULL) {
+			processResponseCallback(_data, _dataStatus);
+		}
+	}
+	else if (st == OpenThermStatus::RESPONSE_RECEIVED_INVALID) {
+		status = OpenThermStatus::DELAY;
+		_dataStatus = OpenThermResponseStatus::RECEIVED_INVALID;
+		if (processResponseCallback != NULL) {
+			processResponseCallback(_data, _dataStatus);
+		}
+	}
+	else if (st == OpenThermStatus::RESPONSE_READY) {
+    _message.Set(_data);
+		if ( _mode == OpenThermMode::SLAVE ) _status = _message.isValidRequest() ? OpenThermStatus::RECEIVED_VALID : OpenThermStatus::LISTENING;
+    else _status = _message.isValidResponse()) ? OpenThermStatus::RECEIVED_VALID : OpenThermStatus::RECEIVED_INVALID;
+		if (processResponseCallback != NULL) {
+			processResponseCallback(_data, _dataStatus);
+		}
+	}
+	else if (st == OpenThermStatus::DELAY) {
+		if ((newTs - ts) > 100000) {
+			status = OpenThermStatus::READY;
+		}
+	}
+}
 
 // https://stackoverflow.com/questions/21617970/how-to-check-if-value-has-even-parity-of-bits-or-odd
 bool OPENTHERM::_checkParity(unsigned long val) {
@@ -255,10 +295,10 @@ void OPENTHERM::printToSerial(OpenthermData &data) {
   else if (data.type == OT_MSGTYPE_WRITE_ACK) {
     Serial.print("WriteAck");
   }
-  else if (data.type == OT_MSGTYPE_INVALID_DATA) {
+  else if (data.type == OT_MSGTYPE_RECEIVED_INVALID_DATA) {
     Serial.print("InvalidData");
   }
-  else if (data.type == OT_MSGTYPE_DATA_INVALID) {
+  else if (data.type == OT_MSGTYPE_DATA_RECEIVED_INVALID) {
     Serial.print("DataInvalid");
   }
   else if (data.type == OT_MSGTYPE_UNKNOWN_DATAID) {
@@ -274,6 +314,43 @@ void OPENTHERM::printToSerial(OpenthermData &data) {
   Serial.print(" ");
   Serial.print(data.valueLB, HEX);
 }
+
+unsigned long OpenthermData::Get()
+{
+  unsigned long data = type;
+  data = (data << 12) | id;
+  data = (data << 8) | valueHB;
+  data = (data << 8) | valueLB;
+  if (!_checkParity(_data)) {
+    _data = _data | 0x80000000;
+  }
+}
+
+void OpenthermData::Set(unsigned long data)
+{
+	if (_checkParity(data))
+  {
+    data.type = OT_MSGTYPE_RECEIVED_INVALID_MSG;
+  }
+  else
+  {
+    type = (data >> 28) & 0x7;
+    id = (data >> 16) & 0xFF;
+    valueHB = (data >> 8) & 0xFF;
+    valueLB = data & 0xFF;
+  }
+}
+
+bool OpenTherm::isValidResponse(unsigned long response)
+{
+	return type == OT_MSGTYPE_READ_ACK || type == OT_MSGTYPE_WRITE_ACK;
+}
+
+bool OpenTherm::isValidRequest(unsigned long request)
+{
+	return type == OT_MSGTYPE_READ_DATA || type == OT_MSGTYPE_WRITE_DATA;
+}
+
 
 float OpenthermData::f88() {
   float value = (int8_t) valueHB;
@@ -311,4 +388,15 @@ int16_t OpenthermData::s16() {
 void OpenthermData::s16(int16_t value) {
   valueLB = value & 0xFF;
   valueHB = (value >> 8) & 0xFF;
+}
+
+bool OPENTHERM::getMessage(OpenthermData &data) {
+  if (_mode == MODE_RECEIVED) {
+    data.type = (_data >> 28) & 0x7;
+    data.id = (_data >> 16) & 0xFF;
+    data.valueHB = (_data >> 8) & 0xFF;
+    data.valueLB = _data & 0xFF;
+    return true;
+  }
+  return false;
 }

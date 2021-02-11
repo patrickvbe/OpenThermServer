@@ -15,6 +15,7 @@
 #define OT_MSGTYPE_INVALID_DATA       B010
 #define OT_MSGTYPE_DATA_INVALID       B110
 #define OT_MSGTYPE_UNKNOWN_DATAID     B111
+#define OT_MSGTYPE_INVALID_MSG        0xFF
 
 // Message IDs
 #define OT_MSGID_STATUS               0
@@ -72,6 +73,12 @@ struct OpenthermData {
   byte id;
   byte valueHB;
   byte valueLB;
+  
+  // Convert to/from unsigned long packet for sending / receiving.
+  void Set(unsigned long);
+  unsigned long Get();
+  bool IsValidRequest();
+  bool IsValidResponse();
 
   /**
    * @return float representation of data packet value
@@ -104,6 +111,23 @@ struct OpenthermData {
   void s16(int16_t value);
 };
 
+enum OpenThermStatus {
+  // These are statussus where we are busy
+	SENDING,
+	LISTENING,
+	START_BIT,
+	RECEIVING,
+	RECEIVED,
+  // These are statussus where we done.
+  DONE_STATUSSUS,
+	IDLE,
+  TIMEOUT
+	RECEIVED_VALID,
+	RECEIVED_INVALID,
+};
+
+enum OpenThermMode { MASTER, SLAVE };
+
 /**
  * Opentherm static class that supports parallel listening and sending
  * and multiple OpenTherm interfaces in the same project.
@@ -111,7 +135,7 @@ struct OpenthermData {
  */
 class OPENTHERM {
   public:
-    OPENTHERM(byte send_pin, byte rec_pin);
+    OPENTHERM(byte send_pin, byte rec_pin, OpenThermMode mode);
     ~OPENTHERM();
 
     /** Immediately send out Opentherm data packet to line connected on given pin.
@@ -126,7 +150,7 @@ class OPENTHERM {
     /** Use this function to check whether send() function already finished sending data packed to line.
      * @return true if data packet has been sent, false otherwise.
      */
-    bool isSent();
+    bool isIdle();
 
     /** Indicates whether last listen() or send() operation ends up with an error.
      * @return true if last listen() or send() operation ends up with an error.
@@ -145,12 +169,14 @@ class OPENTHERM {
   private:  
     const byte send_pin;
     const byte rec_pin;
+    volatile OpenThermStatus _status;
+    OpenThermMode _mode;
     void (*_callback)();
     volatile unsigned long _data;
     volatile byte _clock;
     volatile byte _bitPos;
-    volatile byte _mode;
     volatile bool _active;
+    OpenthermData _message;
 
     void _startWriteTimer(); // writing timer to send manchester code (at 2kHz)
     void _stopTimer();
@@ -160,8 +186,8 @@ class OPENTHERM {
 
     OPENTHERM** _isr = nullptr;
     volatile byte read_state;
-    volatile unsigned long response;
     volatile unsigned long readTimestamp;
+    volatile unsigned long sentTimestamp;
     volatile byte readBitIndex;
 };
 
