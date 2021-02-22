@@ -39,7 +39,7 @@ void WebServer::ServeRoot()
 
 void WebServer::ServeNotFound()
 {
-  String message = "File Not Found\n\n";
+  String message = "Page Not Found\n\n";
   message += "URI: ";
   message += server.uri();
   message += "\nMethod: ";
