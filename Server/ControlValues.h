@@ -6,6 +6,8 @@
 #ifndef CONTROLVALUES_H
 #define CONTROLVALUES_H
 
+#define NO_NODE 0xFF
+
 struct ValueNode
 {
   unsigned long   timestamp;  // seconds
@@ -25,7 +27,8 @@ class ControlValues
   public:
     unsigned long   timestampsec = 0;
     ValueNode       nodes[VALUE_BUFSIZE];
-    int             nextFreeNode = 0;
+    uint8           nextFreeNode = 0;
+    uint8           head = NO_NODE;
     char            wifiStatus = '-'; // '-' not connected, '+' connected, '#' got IP.
 };
 
