@@ -31,6 +31,20 @@ int serial_value = 0;
 int serial_hb = 0;
 OpenthermData serial_message;
 
+void LogSend(OpenthermData& msg, ControlValues& ctrl)
+{
+  // See if we already have a msg with that id
+  if ( ctrl.head != NO_NODE )
+  {
+    
+  }
+}
+
+void LogReply(OpenthermData& msg, ControlValues& ctrl)
+{
+
+}
+
 void OT::Init()
 {
   pinMode(THERMOSTAT_IN, INPUT);
@@ -104,6 +118,7 @@ void OT::Process(ControlValues& ctrl)
       // Insert local control. Current implementation may miss thermostat communication.
       if ( serial_status == SERIAL_WAITING_TO_SEND )
       {
+        LogSend(serial_message, ctrl);
         Serial.print("=> ");
         OPENTHERM::printToSerial(serial_message);
         Serial.println();
@@ -114,7 +129,8 @@ void OT::Process(ControlValues& ctrl)
       else OPENTHERM::listen(THERMOSTAT_IN);
     }
     else if (OPENTHERM::getMessage(message)) {
-      if ( LOG )
+     LogSend(message, ctrl);
+     if ( LOG )
       {
         Serial.print("-> ");
         OPENTHERM::printToSerial(message);
@@ -130,6 +146,7 @@ void OT::Process(ControlValues& ctrl)
       OPENTHERM::listen(BOILER_IN, 800); // response need to be send back by boiler within 800ms
     }
     else if (OPENTHERM::getMessage(message)) {
+      LogReply(message, ctrl);
       if ( LOG || mode == MODE_LISTEN_SLAVE_LOCAL )
       {
         Serial.print("<- ");
