@@ -8,5 +8,3 @@ class OT
 
   private:
 };
-
-extern WebServer webserver;

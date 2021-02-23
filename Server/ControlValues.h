@@ -16,19 +16,19 @@ struct ValueNode
   byte            sendLB;
   byte            recHB;
   byte            recLB;
-  uint8           previous;
-  uint8           next;
+  byte            previous;
+  byte            next;
 };
 
-#define VALUE_BUFSIZE 50;
+#define MAX_NODES 50
 
 class ControlValues
 {
   public:
     unsigned long   timestampsec = 0;
-    ValueNode       nodes[VALUE_BUFSIZE];
-    uint8           nextFreeNode = 0;
-    uint8           head = NO_NODE;
+    ValueNode       nodes[MAX_NODES];
+    byte            nextFreeNode = 0;
+    byte            head = NO_NODE;
     char            wifiStatus = '-'; // '-' not connected, '+' connected, '#' got IP.
 };
 
