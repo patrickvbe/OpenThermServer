@@ -124,16 +124,17 @@ void LogTime()
  ***************************************************************/
 void loop()
 {
-  auto timestamp = millis(); // Freeze the time
-  unsigned long deltasec = (timestamp - lastsecmillis) \ 1000;
-  ctrl.timestampsec += deltasec;
-  lastsecmillis += deltasec * 1000;
-
   //////////////////////////////////////////////////////////////
   // OTA
   //////////////////////////////////////////////////////////////
   ArduinoOTA.handle();
   if ( doingota ) return;
+
+  ////// Some time-keeping /////////////////////////////////////
+  auto timestamp = millis(); // Freeze the time
+  unsigned long deltasec = (timestamp - lastsecmillis) / 1000;
+  ctrl.timestampsec += deltasec;
+  lastsecmillis += deltasec * 1000;
 
   //////////////////////////////////////////////////////////////
   // Open Therm

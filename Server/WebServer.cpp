@@ -6,7 +6,7 @@
 static ESP8266WebServer server(80);
 WebServer webserver;
 
-static const char* pageheader = "<html><head><style>body { zoom: 3; font-family: Arial;} .myDiv { background-color: lightblue; text-align: center; font-size: 40px;} .T { font-size: 100px;}</style></head><body>";
+static const char* pageheader = "<html><head><style>body { zoom: 3; font-family: Arial;} .head { background-color: lightblue; text-align: center; font-size: 40px;} .T { font-size: 100px;}</style></head><body>";
 static const char* pagefooter = "</body></html>";
 
 void WebServer::Init(ControlValues& ctrl)
@@ -24,15 +24,30 @@ void WebServer::Init(ControlValues& ctrl)
 void WebServer::ServeRoot()
 {
   PrintString result(pageheader);
-  result += "<div class=\"myDiv\">Verwarming</div><p>Binnen temperatuur<br><div class=\"T\">";
-  result.ConcatTemp(MPCtrl->insideTemperature);
-  result += "</div></p><p>Buiten temperatuur<br><div class=\"T\">";
-  result.ConcatTemp(MPCtrl->outsideTemperature);
-  result += "</div></p><p>Water: ";
-  result.ConcatTemp(MPCtrl->waterTemperature);
-  result += "<br>Pomp: ";
-  result.concat(MPCtrl->isPumpOn ? "aan" : "uit");
-  result += "</p>";
+  result += "<div class=\"head\">Historie</div><br>time: ";
+  result.print(MPCtrl->timestampsec);
+  result += "<br><table><tr><th>tijd</th><th>id</th><th>send H L</th><th>rec H L</th></tr>";
+  ValueNode* pnode;
+  byte nodeidx = MPCtrl->head;
+  while ( nodeidx != NO_NODE )
+  {
+    pnode = &MPCtrl->nodes[nodeidx];
+    result += "<tr><td>";
+    result.print(pnode->timestamp);
+    result += "</td><td>";
+    result.print(pnode->id);
+    result += "</td><td>";
+    result.print(pnode->sendHB, HEX);
+    result += " ";
+    result.print(pnode->sendLB, HEX);
+    result += "</td><td>";
+    result.print(pnode->recHB, HEX);
+    result += " ";
+    result.print(pnode->recLB, HEX);
+    result += "</td></tr>";
+    nodeidx = pnode->next;
+  }
+  result += "</table>";
   result += pagefooter;
   server.send(200, "text/html", result);
 }

@@ -33,16 +33,62 @@ OpenthermData serial_message;
 
 void LogSend(OpenthermData& msg, ControlValues& ctrl)
 {
-  // See if we already have a msg with that id
-  if ( ctrl.head != NO_NODE )
+  ValueNode* pnode;
+  byte nodeidx = ctrl.head;
+  byte oldestidx = nodeidx;
+  // See if we already have a msg with that id, use that.
+  while ( nodeidx != NO_NODE )
   {
-    
+    pnode = &ctrl.nodes[nodeidx];
+    if ( pnode->id == msg.id ) break;
+    oldestidx = nodeidx;
+    nodeidx = pnode->next;
   }
+  if ( nodeidx == NO_NODE ) // ID not found
+  {
+    // Do we still have nodes left?
+    if ( ctrl.nextFreeNode < MAX_NODES )
+    {
+      nodeidx = ctrl.nextFreeNode++;
+      pnode = &ctrl.nodes[nodeidx];
+      pnode->next = NO_NODE;
+      pnode->previous = NO_NODE;
+    }
+    else // Nothing left, use the oldest.
+    {
+      nodeidx = oldestidx;
+      pnode = &ctrl.nodes[nodeidx];
+    }
+  }
+  // Detach node from the chain.
+  if ( pnode->next     != NO_NODE ) ctrl.nodes[pnode->next].previous = pnode->previous;
+  if ( pnode->previous != NO_NODE ) ctrl.nodes[pnode->previous].next = pnode->next;
+  // Attach node to the head.
+  if ( ctrl.head != NO_NODE ) ctrl.nodes[ctrl.head].previous = nodeidx;
+  pnode->previous = NO_NODE;
+  pnode->next = ctrl.head;
+  ctrl.head = nodeidx;
+  // Put values in the node.
+  pnode->timestamp = ctrl.timestampsec;
+  pnode->id = msg.id;
+  pnode->sendHB = msg.valueHB;
+  pnode->sendLB = msg.valueLB;
+  pnode->recHB = 0xFF;
+  pnode->recLB = 0xFF;
 }
 
 void LogReply(OpenthermData& msg, ControlValues& ctrl)
 {
-
+  // Should be the head...
+  if ( ctrl.head != NO_NODE )
+  {
+    ValueNode* pnode = &ctrl.nodes[ctrl.head];
+    if ( pnode->id == msg.id )  // Does it match?
+    {
+      pnode->recHB = msg.valueHB;
+      pnode->recLB = msg.valueLB;
+    }
+  }
 }
 
 void OT::Init()
