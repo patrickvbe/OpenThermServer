@@ -6,7 +6,12 @@
 static ESP8266WebServer server(80);
 WebServer webserver;
 
-static const char* pageheader = "<html><head><style>body { zoom: 3; font-family: Arial;} .head { background-color: lightblue; text-align: center; font-size: 40px;} .T { font-size: 100px;}</style></head><body>";
+static const char* pageheader = "<html><head><style>"
+"body { zoom: 3; font-family: Arial;}"
+" .head { background-color: lightblue; text-align: center; font-size: 40px;}"
+" .T { font-size: 100px;}"
+"table, th, td {border: 1px solid black; border-collapse: collapse;}"
+"</style></head><body>";
 static const char* pagefooter = "</body></html>";
 
 void WebServer::Init(ControlValues& ctrl)
@@ -36,14 +41,21 @@ void WebServer::ServeRoot()
     result.print(pnode->timestamp);
     result += "</td><td>";
     result.print(pnode->id);
-    result += "</td><td>";
+    result += "</td><td>0x";
     result.print(pnode->sendHB, HEX);
-    result += " ";
+    result += " 0x";
     result.print(pnode->sendLB, HEX);
-    result += "</td><td>";
-    result.print(pnode->recHB, HEX);
-    result += " ";
-    result.print(pnode->recLB, HEX);
+    if ( pnode->recHB == 0xFF && pnode->recLB == 0xFF )
+    {
+      result += "</td><td>-- --";
+    }
+    else
+    {
+      result += "</td><td>0x";
+      result.print(pnode->recHB, HEX);
+      result += " 0x";
+      result.print(pnode->recLB, HEX);
+    }
     result += "</td></tr>";
     nodeidx = pnode->next;
   }

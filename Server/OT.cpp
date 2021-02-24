@@ -11,7 +11,7 @@
 #define BOILER_IN 12
 #define BOILER_OUT 13
 
-#define LOG false
+#define LOG true
 
 OpenthermData message;
 
@@ -161,18 +161,7 @@ void OT::Process(ControlValues& ctrl)
   // Regular OT gateway logic.
   if (mode == MODE_LISTEN_MASTER) {
     if (OPENTHERM::isSent() || OPENTHERM::isIdle() || OPENTHERM::isError()) {
-      // Insert local control. Current implementation may miss thermostat communication.
-      if ( serial_status == SERIAL_WAITING_TO_SEND )
-      {
-        LogSend(serial_message, ctrl);
-        Serial.print("=> ");
-        OPENTHERM::printToSerial(serial_message);
-        Serial.println();
-        OPENTHERM::send(BOILER_OUT, serial_message);
-        mode = MODE_LISTEN_SLAVE_LOCAL;
-        serial_status = SERIAL_IDLE;
-      }
-      else OPENTHERM::listen(THERMOSTAT_IN);
+      OPENTHERM::listen(THERMOSTAT_IN);
     }
     else if (OPENTHERM::getMessage(message)) {
      LogSend(message, ctrl);
@@ -184,6 +173,17 @@ void OT::Process(ControlValues& ctrl)
       }
       OPENTHERM::send(BOILER_OUT, message); // forward message to boiler
       mode = MODE_LISTEN_SLAVE;
+    }
+    else if ( serial_status == SERIAL_WAITING_TO_SEND )
+    {
+      // Insert local control. Current implementation may miss thermostat communication.
+      LogSend(serial_message, ctrl);
+      Serial.print("=> ");
+      OPENTHERM::printToSerial(serial_message);
+      Serial.println();
+      OPENTHERM::send(BOILER_OUT, serial_message);
+      mode = MODE_LISTEN_SLAVE_LOCAL;
+      serial_status = SERIAL_IDLE;
     }
   }
 
