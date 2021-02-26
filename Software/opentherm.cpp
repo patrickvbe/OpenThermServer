@@ -1,6 +1,11 @@
 #include "opentherm.h"
 #include "Arduino.h"
 
+#define USE_US_TIMER
+#include "os_type.h"
+#include "osapi.h"
+#define os_timer_arm_us(a, b, c) ets_timer_arm_new(a, b, c, 0)
+
 #define MODE_IDLE 0     // no operation
 
 #define MODE_LISTEN 1   // waiting for transmission to start
@@ -98,7 +103,7 @@ void OPENTHERM::_read() {
   _startReadTimer(); // get us into 1/4 of manchester code
 }
 
-void OPENTHERM::_timerISR() {
+void OPENTHERM::_timerISR(void*) {
   if (_mode == MODE_LISTEN) {
     {
       if (_timeoutCounter > 0) {
@@ -301,9 +306,11 @@ void OPENTHERM::_stopTimer() {
   TIMSK2 = 0;
   sei();
 }
+
 #endif // END AVR
 
 #ifdef ESP8266
+#ifdef USE_HARDWARE_INTERRUPT
 // 5 kHz timer
 void OPENTHERM::_startReadTimer() {
   noInterrupts();
@@ -337,6 +344,36 @@ void OPENTHERM::_stopTimer() {
   timer1_detachInterrupt();
   interrupts();
 }
+#else // No hardware interrupt, use os interrupt
+
+os_timer_t myTimer;
+
+// 5 kHz timer
+void OPENTHERM::_startReadTimer() {
+  os_timer_disarm(&myTimer);
+  os_timer_setfn(&myTimer, _timerISR, NULL);
+  os_timer_arm_us(&myTimer, 200, true);
+}
+
+// 2 kHz timer
+void OPENTHERM::_startWriteTimer() {
+  os_timer_disarm(&myTimer);
+  os_timer_setfn(&myTimer, _timerISR, NULL);
+  os_timer_arm_us(&myTimer, 500, true);
+}
+
+// 1 kHz timer
+void OPENTHERM::_startTimeoutTimer() {
+  os_timer_disarm(&myTimer);
+  os_timer_setfn(&myTimer, _timerISR, NULL);
+  os_timer_arm_us(&myTimer, 1000, true);
+}
+
+void OPENTHERM::_stopTimer() {
+  os_timer_disarm(&myTimer);
+}
+
+#endif HW or os timer
 #endif // END ESP8266
 
 // https://stackoverflow.com/questions/21617970/how-to-check-if-value-has-even-parity-of-bits-or-odd

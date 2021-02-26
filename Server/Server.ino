@@ -46,6 +46,7 @@ unsigned long lastWiFiTry = -WIFI_TRY_INTERVAL;
  ***************************************************************/
 void setup()
 {
+  system_timer_reinit ();
   Serial.begin(115200);
 
   //////////////////////////////////////////////////////////////
