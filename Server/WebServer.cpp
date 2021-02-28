@@ -31,7 +31,7 @@ void WebServer::ServeRoot()
   PrintString result(pageheader);
   result += "<div class=\"head\">Historie</div><br>time: ";
   result.print(MPCtrl->timestampsec);
-  result += "<br><table><tr><th>tijd</th><th>id</th><th>send H L</th><th>rec H L</th></tr>";
+  result += "<br><table><tr><th>tijd</th><th>id</th><th>send</th><th>rec</th></tr>";
   ValueNode* pnode;
   byte nodeidx = MPCtrl->head;
   while ( nodeidx != NO_NODE )
@@ -42,19 +42,15 @@ void WebServer::ServeRoot()
     result += "</td><td>";
     result.print(pnode->id);
     result += "</td><td>0x";
-    result.print(pnode->sendHB, HEX);
-    result += " 0x";
-    result.print(pnode->sendLB, HEX);
-    if ( pnode->recHB == 0xFF && pnode->recLB == 0xFF )
+    result.print(pnode->send, HEX);
+    if ( pnode->rec == 0xFFFF )
     {
-      result += "</td><td>-- --";
+      result += "</td><td>----";
     }
     else
     {
       result += "</td><td>0x";
-      result.print(pnode->recHB, HEX);
-      result += " 0x";
-      result.print(pnode->recLB, HEX);
+      result.print(pnode->rec, HEX);
     }
     result += "</td></tr>";
     nodeidx = pnode->next;

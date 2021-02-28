@@ -3,8 +3,8 @@
 class OT
 {
   public:
-    void Init();
-    void Process(ControlValues& ctrl);
+    void Init(ControlValues& ctrl);
+    void Process();
 
   private:
 };

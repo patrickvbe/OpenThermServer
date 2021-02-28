@@ -12,10 +12,8 @@ struct ValueNode
 {
   unsigned long   timestamp;  // seconds
   byte            id;
-  byte            sendHB;
-  byte            sendLB;
-  byte            recHB;
-  byte            recLB;
+  uint16_t        send;
+  uint16_t        rec;
   byte            previous;
   byte            next;
 };
