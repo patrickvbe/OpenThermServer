@@ -14,7 +14,7 @@
 OpenTherm mOT(BOILER_IN, BOILER_OUT);
 OpenTherm sOT(THERMOSTAT_IN, THERMOSTAT_OUT, true);
 
-#define LOG true
+#define LOG false
 
 #define MODE_LISTEN_MASTER 0
 #define MODE_LISTEN_SLAVE 1
@@ -37,7 +37,7 @@ ControlValues*        pctrl;
 
 void LogRequest(unsigned long msg, ControlValues& ctrl)
 {
-  auto msg_id = sOT.getDataID(msg);
+  auto msg_id = OpenTherm::getDataID(msg);
   ValueNode* pnode;
   byte nodeidx = ctrl.head;
   byte oldestidx = nodeidx;
@@ -75,8 +75,10 @@ void LogRequest(unsigned long msg, ControlValues& ctrl)
   ctrl.head = nodeidx;
   // Put values in the node.
   pnode->timestamp = ctrl.timestampsec;
+  pnode->stype = OpenTherm::getMessageType(msg);
+  pnode->rtype = 0xFF;
   pnode->id = msg_id;
-  pnode->send = sOT.getUInt(msg);
+  pnode->send = OpenTherm::getUInt(msg);
   pnode->rec = 0xFFFF;
 }
 
@@ -86,23 +88,24 @@ void LogResponse(unsigned long msg, ControlValues& ctrl)
   if ( ctrl.head != NO_NODE )
   {
     ValueNode* pnode = &ctrl.nodes[ctrl.head];
-    if ( pnode->id == sOT.getDataID(msg) )  // Does it match?
+    if ( pnode->id == OpenTherm::getDataID(msg) )  // Does it match?
     {
-      pnode->rec = sOT.getUInt(msg);
+      pnode->rtype = OpenTherm::getMessageType(msg);
+      pnode->rec = OpenTherm::getUInt(msg);
     }
   }
 }
 
 void LogMessage(unsigned long message, char* prefix)
 {
-  if ( LOG )
+  if ( LOG || mode == MODE_LISTEN_SLAVE_LOCAL )
   {
     Serial.print(prefix);
-    Serial.print(sOT.messageTypeToString(sOT.getMessageType(message)));
+    Serial.print(OpenTherm::messageTypeToString(OpenTherm::getMessageType(message)));
     Serial.print(" ");
-    Serial.print(sOT.getDataID(message));
+    Serial.print(OpenTherm::getDataID(message));
     Serial.print(" ");
-    Serial.println(sOT.getUInt(message), HEX);
+    Serial.println(OpenTherm::getUInt(message), HEX);
   }
 }
 
@@ -144,7 +147,7 @@ void processResponse(unsigned long response, OpenThermResponseStatus status) {
   }
   else
   {
-    if (LOG) Serial.println(mOT.statusToString(status));
+    if (LOG) Serial.println(OpenTherm::statusToString(status));
   }
   mode = MODE_LISTEN_MASTER;
 }
@@ -216,10 +219,10 @@ void OT::Process()
   mOT.process();
   if ( serial_status == SERIAL_WAITING_TO_SEND && mOT.isReady() )
   {
-    unsigned long message = mOT.buildRequest(serial_type, serial_id, serial_data);
+    mode = MODE_LISTEN_SLAVE_LOCAL;
+    unsigned long message = OpenTherm::buildRequest(serial_type, serial_id, serial_data);
     LogMessage(message, "=> ");
     mOT.sendRequestAync(message);
-    mode = MODE_LISTEN_SLAVE_LOCAL;
     serial_status = SERIAL_IDLE;
   }
 }

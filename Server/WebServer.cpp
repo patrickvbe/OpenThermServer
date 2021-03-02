@@ -1,6 +1,7 @@
 #include "WebServer.h"
 
 #include <ESP8266WebServer.h>
+#include <OpenTherm.h>
 #include "PrintString.h"
 
 static ESP8266WebServer server(80);
@@ -41,7 +42,12 @@ void WebServer::ServeRoot()
     result.print(pnode->timestamp);
     result += "</td><td>";
     result.print(pnode->id);
-    result += "</td><td>0x";
+    result += " ";
+    auto str = OpenTherm::messageIDToString((OpenThermMessageID)pnode->id);
+    if ( str != nullptr ) result += str;
+    result += "</td><td>";
+    result.print(OpenTherm::messageTypeToString((OpenThermMessageType)pnode->stype));
+    result += " 0x";
     result.print(pnode->send, HEX);
     if ( pnode->rec == 0xFFFF )
     {
@@ -49,7 +55,9 @@ void WebServer::ServeRoot()
     }
     else
     {
-      result += "</td><td>0x";
+      result += "</td><td>";
+      result.print(OpenTherm::messageTypeToString((OpenThermMessageType)pnode->rtype));
+      result += " 0x";
       result.print(pnode->rec, HEX);
     }
     result += "</td></tr>";
