@@ -1,4 +1,5 @@
-#include "ControlValues.h"
+
+class ControlValues;
 
 class WebServer
 {

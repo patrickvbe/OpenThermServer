@@ -8,72 +8,76 @@ Copyright 2018, Ihor Melnyk
 struct IDMap
 {
 	byte id;
-	byte type; // 0 = unit32, 1 = float, 2 = 2xbyte, 3= flags
+	OpenTherm::ValueType type; // 0 = unit32, 1 = float, 2 = 2xbyte, 3= flags
 	const char *text;
 };
 
 const IDMap idmap[] = {
-  {Status, 3, "Status"},
-  {TSet, 1, "TSet"},
-  {MConfigMMemberIDcode, 3, "MConfigMMemberIDcode"},
-  {SConfigSMemberIDcode, 3, "SConfigSMemberIDcode"},
-  {Command, 2, "Command"},
-  {ASFflags, 3, "ASFflags"},
-  {RBPflags, 3, "RBPflags"},
-  {CoolingControl, 1, "CoolingControl"},
-  {TsetCH2, 1, "TsetCH2"},
-  {TrOverride, 1, "TrOverride"},
-  {TSP, 2, "TSP count"},
-  {TSPindexTSPvalue, 2, "TSPindexTSPvalue"},
-  {FHBsize, 2, "FHBsize"},
-  {FHBindexFHBvalue, 2, "FHBindexFHBvalue"},
-  {MaxRelModLevelSetting, 1, "MaxRelModLevelSetting"},
-  {MaxCapacityMinModLevel, 2, "MaxCapacityMinModLevel"},
-  {TrSet, 1, "TrSet"},
-  {RelModLevel, 1, "RelModLevel"},
-  {CHPressure, 1, "CHPressure"},
-  {DHWFlowRate, 1, "DHWFlowRate"},
-  {DayTime, 2, "DayTime"},
-  {Date, 2, "Date"},
-  {Year, 0, "Year"},
-  {TrSetCH2, 1, "TrSetCH2"},
-  {Tr, 1, "Tr"},
-  {Tboiler, 1, "Tboiler"},
-  {Tdhw, 1, "Tdhw"},
-  {Toutside, 1, "Toutside"},
-  {Tret, 1, "Tret"},
-  {Tstorage, 1, "Tstorage"},
-  {Tcollector, 1, "Tcollector"},
-  {TflowCH2, 1, "TflowCH2"},
-  {Tdhw2, 1, "Tdhw2"},
-  {Texhaust, 0, "Texhaust"},
-  {TdhwSetUBTdhwSetLB, 2, "TdhwSetUBTdhwSetLB"},
-  {MaxTSetUBMaxTSetLB, 2, "MaxTSetUBMaxTSetLB"},
-  {HcratioUBHcratioLB, 2, "HcratioUBHcratioLB"},
-  {TdhwSet, 1, "TdhwSet"},
-  {MaxTSet, 1, "MaxTSet"},
-  {Hcratio, 1, "Hcratio"},
-  {RemoteOverrideFunction, 3, "RemoteOverrideFunction"},
-  {OEMDiagnosticCode, 0, "OEMDiagnosticCode"},
-  {BurnerStarts, 0, "BurnerStarts"},
-  {CHPumpStarts, 0, "CHPumpStarts"},
-  {DHWPumpValveStarts, 0, "DHWPumpValveStarts"},
-  {DHWBurnerStarts, 0, "DHWBurnerStarts"},
-  {BurnerOperationHours, 0, "BurnerOperationHours"},
-  {CHPumpOperationHours, 0, "CHPumpOperationHours"},
-  {DHWPumpValveOperationHours, 0, "DHWPumpValveOperationHours"},
-  {DHWBurnerOperationHours, 0, "DHWBurnerOperationHours"},
-  {OpenThermVersionMaster, 1, "OpenThermVersionMaster"},
-  {OpenThermVersionSlave, 1, "OpenThermVersionSlave"},
-  {MasterVersion, 2, "MasterVersion"},
-  {SlaveVersion, 2, "SlaveVersion"}
+  {Status, OpenTherm::ValueType::TFlags, "Status"},
+  {TSet, OpenTherm::ValueType::TFloat, "TSet"},
+  {MConfigMMemberIDcode, OpenTherm::ValueType::TFlags, "MConfigMMemberIDcode"},
+  {SConfigSMemberIDcode, OpenTherm::ValueType::TFlags, "SConfigSMemberIDcode"},
+  {Command, OpenTherm::ValueType::TTwoByte, "Command"},
+  {ASFflags, OpenTherm::ValueType::TFlags, "ASFflags"},
+  {RBPflags, OpenTherm::ValueType::TFlags, "RBPflags"},
+  {CoolingControl, OpenTherm::ValueType::TFloat, "CoolingControl"},
+  {TsetCH2, OpenTherm::ValueType::TFloat, "TsetCH2"},
+  {TrOverride, OpenTherm::ValueType::TFloat, "TrOverride"},
+  {TSP, OpenTherm::ValueType::TTwoByte, "TSP count"},
+  {TSPindexTSPvalue, OpenTherm::ValueType::TTwoByte, "TSPindexTSPvalue"},
+  {FHBsize, OpenTherm::ValueType::TTwoByte, "FHBsize"},
+  {FHBindexFHBvalue, OpenTherm::ValueType::TTwoByte, "FHBindexFHBvalue"},
+  {MaxRelModLevelSetting, OpenTherm::ValueType::TFloat, "MaxRelModLevelSetting"},
+  {MaxCapacityMinModLevel, OpenTherm::ValueType::TTwoByte, "MaxCapacityMinModLevel"},
+  {TrSet, OpenTherm::ValueType::TFloat, "TrSet"},
+  {RelModLevel, OpenTherm::ValueType::TFloat, "RelModLevel"},
+  {CHPressure, OpenTherm::ValueType::TFloat, "CHPressure"},
+  {DHWFlowRate, OpenTherm::ValueType::TFloat, "DHWFlowRate"},
+  {DayTime, OpenTherm::ValueType::TTwoByte, "DayTime"},
+  {Date, OpenTherm::ValueType::TTwoByte, "Date"},
+  {Year, OpenTherm::ValueType::TInt, "Year"},
+  {TrSetCH2, OpenTherm::ValueType::TFloat, "TrSetCH2"},
+  {Tr, OpenTherm::ValueType::TFloat, "Tr"},
+  {Tboiler, OpenTherm::ValueType::TFloat, "Tboiler"},
+  {Tdhw, OpenTherm::ValueType::TFloat, "Tdhw"},
+  {Toutside, OpenTherm::ValueType::TFloat, "Toutside"},
+  {Tret, OpenTherm::ValueType::TFloat, "Tret"},
+  {Tstorage, OpenTherm::ValueType::TFloat, "Tstorage"},
+  {Tcollector, OpenTherm::ValueType::TFloat, "Tcollector"},
+  {TflowCH2, OpenTherm::ValueType::TFloat, "TflowCH2"},
+  {Tdhw2, OpenTherm::ValueType::TFloat, "Tdhw2"},
+  {Texhaust, OpenTherm::ValueType::TInt, "Texhaust"},
+  {TdhwSetUBTdhwSetLB, OpenTherm::ValueType::TTwoByte, "TdhwSetUBTdhwSetLB"},
+  {MaxTSetUBMaxTSetLB, OpenTherm::ValueType::TTwoByte, "MaxTSetUBMaxTSetLB"},
+  {HcratioUBHcratioLB, OpenTherm::ValueType::TTwoByte, "HcratioUBHcratioLB"},
+  {TdhwSet, OpenTherm::ValueType::TFloat, "TdhwSet"},
+  {MaxTSet, OpenTherm::ValueType::TFloat, "MaxTSet"},
+  {Hcratio, OpenTherm::ValueType::TFloat, "Hcratio"},
+  {RemoteOverrideFunction, OpenTherm::ValueType::TFlags, "RemoteOverrideFunction"},
+  {OEMDiagnosticCode, OpenTherm::ValueType::TInt, "OEMDiagnosticCode"},
+  {BurnerStarts, OpenTherm::ValueType::TInt, "BurnerStarts"},
+  {CHPumpStarts, OpenTherm::ValueType::TInt, "CHPumpStarts"},
+  {DHWPumpValveStarts, OpenTherm::ValueType::TInt, "DHWPumpValveStarts"},
+  {DHWBurnerStarts, OpenTherm::ValueType::TInt, "DHWBurnerStarts"},
+  {BurnerOperationHours, OpenTherm::ValueType::TInt, "BurnerOperationHours"},
+  {CHPumpOperationHours, OpenTherm::ValueType::TInt, "CHPumpOperationHours"},
+  {DHWPumpValveOperationHours, OpenTherm::ValueType::TInt, "DHWPumpValveOperationHours"},
+  {DHWBurnerOperationHours, OpenTherm::ValueType::TInt, "DHWBurnerOperationHours"},
+  {OpenThermVersionMaster, OpenTherm::ValueType::TFloat, "OpenThermVersionMaster"},
+  {OpenThermVersionSlave, OpenTherm::ValueType::TFloat, "OpenThermVersionSlave"},
+  {MasterVersion, OpenTherm::ValueType::TTwoByte, "MasterVersion"},
+  {SlaveVersion, OpenTherm::ValueType::TTwoByte, "SlaveVersion"}
 };
 
-const char* OpenTherm::messageIDToString(OpenThermMessageID message_id)
+const char* OpenTherm::messageIDToString(OpenThermMessageID message_id, OpenTherm::ValueType& type)
 {
   for ( const auto& item : idmap )
   {
-    if ( item.id == (byte)message_id ) return item.text;
+    if ( item.id == (byte)message_id )
+    {
+      type = item.type;
+      return item.text;
+    }
   }
   return nullptr;
 }
