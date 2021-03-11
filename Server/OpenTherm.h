@@ -113,6 +113,8 @@ enum OpenThermStatus {
 class OpenTherm
 {
 public:
+	enum class ValueType : byte { TInt, TFloat, TTwoByte, TFlags };
+
 	OpenTherm(int inPin = 4, int outPin = 5, bool isSlave = false);
 	volatile OpenThermStatus status;
 	void begin(void(*handleInterruptCallback)(void));
@@ -133,7 +135,7 @@ public:
 	static OpenThermMessageType getMessageType(unsigned long message);
 	static OpenThermMessageID getDataID(unsigned long frame);
 	static const char *messageTypeToString(OpenThermMessageType message_type);
-	static const char *messageIDToString(OpenThermMessageID message_id);
+	static const char *messageIDToString(OpenThermMessageID message_id, OpenTherm::ValueType& type);
 	static bool isValidRequest(unsigned long request);
 	static bool isValidResponse(unsigned long response);
 

@@ -1,7 +1,7 @@
 #include "WebServer.h"
-
+#include "ControlValues.h"
 #include <ESP8266WebServer.h>
-#include <OpenTherm.h>
+#include "OpenTherm.h"
 #include "PrintString.h"
 
 static ESP8266WebServer server(80);
@@ -27,6 +27,38 @@ void WebServer::Init(ControlValues& ctrl)
   server.begin();
 }
 
+void AppendOTValue(PrintString& result, OpenTherm::ValueType vtype, uint16_t value)
+{
+  if ( value == 0xFFFF )
+  {
+    result += "----";
+  }
+  else
+  {
+    switch ( vtype )
+    {
+      case OpenTherm::ValueType::TInt:
+        result.print(value, HEX);
+        break;
+      case OpenTherm::ValueType::TFloat:
+        result.print(value >> 8);
+        result += '.';
+        result.print(value &0xFF);
+        break;
+      case OpenTherm::ValueType::TTwoByte:
+        result.print(value >> 8);
+        result += '-';
+        result.print(value &0xFF);
+        break;
+      case OpenTherm::ValueType::TFlags:
+        result.print(value >> 8, BIN);
+        result += '-';
+        result.print(value &0xFF, BIN);
+        break;
+    }
+  }
+}
+
 void WebServer::ServeRoot()
 {
   PrintString result(pageheader);
@@ -43,12 +75,13 @@ void WebServer::ServeRoot()
     result += "</td><td>";
     result.print(pnode->id);
     result += " ";
-    auto str = OpenTherm::messageIDToString((OpenThermMessageID)pnode->id);
+    OpenTherm::ValueType vtype;
+    auto str = OpenTherm::messageIDToString((OpenThermMessageID)pnode->id, vtype);
     if ( str != nullptr ) result += str;
     result += "</td><td>";
     result.print(OpenTherm::messageTypeToString((OpenThermMessageType)pnode->stype));
-    result += " 0x";
-    result.print(pnode->send, HEX);
+    result += " ";
+    AppendOTValue(result, vtype, pnode->send);
     if ( pnode->rec == 0xFFFF )
     {
       result += "</td><td>----";
@@ -57,8 +90,8 @@ void WebServer::ServeRoot()
     {
       result += "</td><td>";
       result.print(OpenTherm::messageTypeToString((OpenThermMessageType)pnode->rtype));
-      result += " 0x";
-      result.print(pnode->rec, HEX);
+      result += " ";
+      AppendOTValue(result, vtype, pnode->rec);
     }
     result += "</td></tr>";
     nodeidx = pnode->next;

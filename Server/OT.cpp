@@ -1,7 +1,7 @@
 #include "OT.h"
-
+#include "ControlValues.h"
 #include "PrintString.h"
-#include <OpenTherm.h>
+#include "OpenTherm.h"
 
 //////////////////////////////////////////////////////////////
 // Pin settings
