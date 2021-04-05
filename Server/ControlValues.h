@@ -30,6 +30,9 @@ class ControlValues
     byte            nextFreeNode = 0;
     byte            head = NO_NODE;
     char            wifiStatus = '-'; // '-' not connected, '+' connected, '#' got IP.
+
+    void ForNodes(std::function<bool(const ValueNode&)>);
+    const ValueNode* FindId(byte id);
 };
 
 #endif // CONTROLVALUES_H

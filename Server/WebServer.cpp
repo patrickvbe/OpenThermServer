@@ -21,6 +21,9 @@ void WebServer::Init(ControlValues& ctrl)
   server.on("/", []() {
     webserver.ServeRoot();
   });
+  server.on("/read", []() {
+    webserver.ServeRead();
+  });
   server.onNotFound([]() {
     webserver.ServeNotFound();
   });
@@ -41,9 +44,7 @@ void AppendOTValue(PrintString& result, OpenTherm::ValueType vtype, uint16_t val
         result.print(value, HEX);
         break;
       case OpenTherm::ValueType::TFloat:
-        result.print(value >> 8);
-        result += '.';
-        result.print(value &0xFF);
+        result.print(OpenTherm::toFloat(value));
         break;
       case OpenTherm::ValueType::TTwoByte:
         result.print(value >> 8);
@@ -51,9 +52,10 @@ void AppendOTValue(PrintString& result, OpenTherm::ValueType vtype, uint16_t val
         result.print(value &0xFF);
         break;
       case OpenTherm::ValueType::TFlags:
+        result += 'B';
         result.print(value >> 8, BIN);
-        result += '-';
-        result.print(value &0xFF, BIN);
+        result += " B";
+        result.print(value & 0xFF, BIN);
         break;
     }
   }
@@ -62,43 +64,53 @@ void AppendOTValue(PrintString& result, OpenTherm::ValueType vtype, uint16_t val
 void WebServer::ServeRoot()
 {
   PrintString result(pageheader);
-  result += "<div class=\"head\">Historie</div><br>time: ";
+  result += "<div class=\"head\">Historie</div><br>Uptime: ";
   result.print(MPCtrl->timestampsec);
   result += "<br><table><tr><th>tijd</th><th>id</th><th>send</th><th>rec</th></tr>";
-  ValueNode* pnode;
-  byte nodeidx = MPCtrl->head;
-  while ( nodeidx != NO_NODE )
+  MPCtrl.ForNodes([&](const ValueNode& node)
   {
-    pnode = &MPCtrl->nodes[nodeidx];
     result += "<tr><td>";
-    result.print(pnode->timestamp);
+    result.print((long)(node.timestamp - MPCtrl->timestampsec));
     result += "</td><td>";
-    result.print(pnode->id);
+    result.print(node.id);
     result += " ";
     OpenTherm::ValueType vtype;
-    auto str = OpenTherm::messageIDToString((OpenThermMessageID)pnode->id, vtype);
+    auto str = OpenTherm::messageIDToString((OpenThermMessageID)node.id, vtype);
     if ( str != nullptr ) result += str;
     result += "</td><td>";
-    result.print(OpenTherm::messageTypeToString((OpenThermMessageType)pnode->stype));
+    result.print(OpenTherm::messageTypeToString((OpenThermMessageType)node.stype));
     result += " ";
-    AppendOTValue(result, vtype, pnode->send);
-    if ( pnode->rec == 0xFFFF )
+    AppendOTValue(result, vtype, node.send);
+    if ( node.rec == 0xFFFF )
     {
       result += "</td><td>----";
     }
     else
     {
       result += "</td><td>";
-      result.print(OpenTherm::messageTypeToString((OpenThermMessageType)pnode->rtype));
+      result.print(OpenTherm::messageTypeToString((OpenThermMessageType)node.rtype));
       result += " ";
-      AppendOTValue(result, vtype, pnode->rec);
+      AppendOTValue(result, vtype, node.rec);
     }
     result += "</td></tr>";
-    nodeidx = pnode->next;
-  }
+    return true; // keep going
+  });
   result += "</table>";
   result += pagefooter;
   server.send(200, "text/html", result);
+}
+
+void WebServer::ServeRead()
+{
+  long id = server.arg("id").toInt();
+  long value = strtol(server.arg("value").c_str(), nullptr, 0); // Supports dec/oct/hex
+  String result = "Read ";
+  result += id;
+  result += " / ";
+  result += value;
+  result += "\n";
+  ValueNode* pnode = MPCtrl->FindId(id);
+  server.send(200, "text/plain", result);
 }
 
 void WebServer::ServeNotFound()

@@ -10,6 +10,7 @@ class WebServer
   private:
     ControlValues*  MPCtrl = nullptr;
     void ServeRoot();
+    void ServeRead();
     void ServeNotFound();
 };
 
