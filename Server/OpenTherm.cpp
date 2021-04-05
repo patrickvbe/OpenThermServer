@@ -421,8 +421,11 @@ uint16_t OpenTherm::getUInt(const unsigned long response)  {
 }
 
 float OpenTherm::getFloat(const unsigned long response) {
-	const uint16_t u88 = getUInt(response);
-	const float f = (u88 & 0x8000) ? -(0x10000L - u88) / 256.0f : u88 / 256.0f;
+	return toFloat(getUInt(response));
+}
+
+float OpenTherm::toFloat(const uint16_t value) {
+	const float f = (value & 0x8000) ? -(0x10000L - value) / 256.0f : value / 256.0f;
 	return f;
 }
 

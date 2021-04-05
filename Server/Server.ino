@@ -68,6 +68,7 @@ void setup()
     ctrl.wifiStatus = '#';
     ArduinoOTA.begin();
     MDNS.begin("OTServer");
+    DEBUGONLY(Serial.print(WiFi.localIP()));
   });
 
   //////////////////////////////////////////////////////////////

@@ -153,6 +153,7 @@ public:
 	static bool isDiagnostic(unsigned long response);
 	static uint16_t getUInt(const unsigned long response);
 	static float getFloat(const unsigned long response);	
+	static float toFloat(const uint16_t value);	
 	static unsigned int temperatureToData(float temperature);
 
 	//basic requests
