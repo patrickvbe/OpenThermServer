@@ -65,13 +65,13 @@ void WebServer::ServeRoot()
 {
   PrintString result(pageheader);
   result += "<div class=\"head\">Historie</div><br>Uptime: ";
-  result.print(MPCtrl->timestampsec);
+  PrintTime(MPCtrl->timestampsec, result);
   result += "<br><table><tr><th>tijd</th><th>id</th><th>send</th><th>rec</th></tr>";
-  MPCtrl.ForNodes([&](const ValueNode& node)
+  MPCtrl->ForNodes([&](const ValueNode& node)
   {
     result += "<tr><td>";
     result.print((long)(node.timestamp - MPCtrl->timestampsec));
-    result += "</td><td>";
+    result += "s</td><td>";
     result.print(node.id);
     result += " ";
     OpenTherm::ValueType vtype;
@@ -104,12 +104,24 @@ void WebServer::ServeRead()
 {
   long id = server.arg("id").toInt();
   long value = strtol(server.arg("value").c_str(), nullptr, 0); // Supports dec/oct/hex
-  String result = "Read ";
+  PrintString result;
   result += id;
   result += " / ";
   result += value;
   result += "\n";
-  ValueNode* pnode = MPCtrl->FindId(id);
+  auto pnode = MPCtrl->FindId(id);
+  if ( pnode && /*(pnode->stype == OpenThermMessageType::WRITE_DATA || pnode->send == value) &&*/ MPCtrl->timestampsec - pnode->timestamp < 30 )  // Less than 30s old, use the existing value.
+  {
+    OpenTherm::ValueType vtype;
+    auto str = OpenTherm::messageIDToString((OpenThermMessageID)id, vtype);
+    result += str;
+    result.print("=");
+    AppendOTValue(result, vtype, pnode->rec);
+  }
+  else
+  {
+    // Send request and keep scanning for a few seconds for the response.
+  }
   server.send(200, "text/plain", result);
 }
 
