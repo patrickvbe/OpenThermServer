@@ -22,6 +22,11 @@ OpenTherm sOT(THERMOSTAT_IN, THERMOSTAT_OUT, true);
 
 int mode = 0;
 
+// Reboot when no request / response for the given timeout: 1000ms * 60s * 5min = 300000
+#define REBOOT_TIMEOUT 300000
+unsigned long lastrequest = millis();
+unsigned long lastresponse = lastrequest;
+
 // Allow for serial input to to control the boiler.
 #define SERIAL_IDLE 0
 #define SERIAL_REGISTER 1
@@ -96,7 +101,7 @@ void LogResponse(unsigned long msg, ControlValues& ctrl)
   }
 }
 
-void LogMessage(unsigned long message, char* prefix)
+void LogMessage(unsigned long message, const char* prefix)
 {
   if ( LOG || mode == MODE_LISTEN_SLAVE_LOCAL )
   {
@@ -109,12 +114,12 @@ void LogMessage(unsigned long message, char* prefix)
   }
 }
 
-void ICACHE_RAM_ATTR mHandleInterrupt()
+void IRAM_ATTR mHandleInterrupt()
 {
     mOT.handleInterrupt();
 }
 
-void ICACHE_RAM_ATTR sHandleInterrupt()
+void IRAM_ATTR sHandleInterrupt()
 {
     sOT.handleInterrupt();
 }
@@ -123,6 +128,7 @@ void processRequest(unsigned long request, OpenThermResponseStatus status)
 {
   if ( status == OpenThermResponseStatus::SUCCESS )
   {
+    lastrequest = millis();
     LogMessage(request, "-> ");
     if ( mode != MODE_LISTEN_MASTER )
     {
@@ -141,6 +147,7 @@ void processRequest(unsigned long request, OpenThermResponseStatus status)
 void processResponse(unsigned long response, OpenThermResponseStatus status) {
   if ( status == OpenThermResponseStatus::SUCCESS )
   {
+    lastresponse = millis();
     LogMessage(response, "<- ");
     LogResponse(response, *pctrl);
     if ( mode == MODE_LISTEN_SLAVE ) sOT.sendResponse(response);
@@ -225,4 +232,12 @@ void OT::Process()
     mOT.sendRequestAync(message);
     serial_status = SERIAL_IDLE;
   }
+
+  // Handle timeout. Reboot when no messages have been process for REBOOT_TIMEOUT ms.
+  auto timestamp = millis();
+  if ( (timestamp - lastrequest) > REBOOT_TIMEOUT || (timestamp - lastresponse) > REBOOT_TIMEOUT )
+  {
+    ESP.restart();
+  }
+  
 }

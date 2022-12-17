@@ -1,4 +1,4 @@
-// python3 ~/.arduino15/packages/esp8266/hardware/esp8266/2.7.4/tools/espota.py -i 192.168.178.115 -p 8266 -f /tmp/arduino_build_661492/MainController.ino.bin
+// python3 ~/.arduino15/packages/esp8266/hardware/esp8266/2.7.4/tools/espota.py -i 192.168.178.6 -p 8266 -f /tmp/arduino_build_661492/MainController.ino.bin
 // Going OTA...
 #include <ESP8266WiFi.h>
 #include <ESP8266mDNS.h>
@@ -11,7 +11,7 @@ const char* ssid = STASSID;
 const char* password = STAPSK;
 bool doingota = false;
 
-#define DEBUG;
+#define DEBUG
 #ifdef DEBUG
   #define DEBUGONLY(statement) statement;
 #else
@@ -103,23 +103,6 @@ void setup()
   lastloopmillis = millis();
   lastsecmillis = millis();
 }
-
-/***************************************************************
- * Log time since startup in a nicely readable format.
- ***************************************************************/
-#ifdef DEBUG
-void LogTime()
-{
-  unsigned long totalseconds = millis()/1000;
-  unsigned long seconds = totalseconds % 60;
-  unsigned long minutes = totalseconds / 60;
-  Serial.print(minutes);
-  Serial.print(':');
-  if ( seconds < 10 ) Serial.print('0');
-  Serial.print(seconds);
-  Serial.print(' ');
-}
-#endif
 
 /***************************************************************
  * Main loop

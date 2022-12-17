@@ -17,14 +17,15 @@ public:
   PrintString& operator=(const char *cstr) { String::operator=(cstr);  return *this;}
   PrintString& operator=(const __FlashStringHelper *str)  { String::operator=(str);  return *this;}
 
-  virtual size_t write(uint8_t c) { concat((char)c); }
-  virtual size_t write(const uint8_t *buffer, size_t size)
+  virtual size_t write(uint8_t c) { concat((char)c); return 1; }
+  virtual size_t write(const uint8_t *buffer, const size_t size)
   {
     reserve(length() + size + 1);
-    while(size--) concat((char)*buffer++);
+    for ( auto idx = size; idx > 0; idx--) concat((char)*buffer++);
+    return size;
   }
   virtual int availableForWrite() { return 100; } // Whatever??
   void ConcatTemp(int temp, bool usedecimals=true);
-  void ConcatTime(unsigned long time);
 };
 
+extern void PrintTime(unsigned long seconds, Print& target);

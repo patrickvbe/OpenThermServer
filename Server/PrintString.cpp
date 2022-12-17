@@ -21,21 +21,27 @@ void PrintString::ConcatTemp(int temp, bool usedecimals)
   }
 } 
 
-void PrintString::ConcatTime(unsigned long time)
+void PrintTime(unsigned long seconds, Print& target)
 {
-  time /= 1000;
-  unsigned long hours = time / 3600;
-  unsigned long minutes = time % 3600;
-  unsigned long seconds = minutes % 60;
-  minutes /= 60;
-  if ( hours > 0 )
+  unsigned long minutes = seconds / 60;
+  seconds %= 60;
+  unsigned long hours = minutes / 60;
+  minutes %= 60;
+  unsigned long days = hours / 24;
+  hours %= 24;
+  if ( days > 0 )
   {
-    concat(hours);
-    concat(':');
-    if ( minutes < 10 ) concat('0');
+    target.print(hours);
+    target.print("d ");
   }
-  concat(minutes);
-  concat(':');
-  if ( seconds < 10 ) concat('0');
-  concat(seconds);
-} 
+  if ( days > 0 || hours > 0 )
+  {
+    target.print(hours);
+    target.print(':');
+    if ( minutes < 10 ) target.print('0');
+  }
+  target.print(minutes);
+  target.print(':');
+  if ( seconds < 10 ) target.print('0');
+  target.print(seconds);
+}
