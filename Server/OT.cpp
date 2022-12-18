@@ -151,6 +151,11 @@ void processResponse(unsigned long response, OpenThermResponseStatus status) {
     LogMessage(response, "<- ");
     LogResponse(response, *pctrl);
     if ( mode == MODE_LISTEN_SLAVE ) sOT.sendResponse(response);
+    else if ( mode == MODE_LISTEN_SLAVE_LOCAL &&  pctrl->request_status == ControlValues::RequestStatus::PendingReceive )
+    {
+      pctrl->response = response;
+      pctrl->request_status = ControlValues::RequestStatus::Received;
+    }
   }
   else
   {
@@ -224,6 +229,14 @@ void OT::Process()
   // Regular OT gateway logic.
   sOT.process();
   mOT.process();
+  if ( pctrl->request_status == ControlValues::RequestStatus::PendingSend && mOT.isReady() )
+  {
+    mode = MODE_LISTEN_SLAVE_LOCAL;
+    pctrl->request_status = ControlValues::RequestStatus::PendingReceive;
+    LogRequest(pctrl->pending_request, *pctrl);
+    LogMessage(pctrl->pending_request, "#> ");
+    mOT.sendRequestAync(pctrl->pending_request);
+  }
   if ( serial_status == SERIAL_WAITING_TO_SEND && mOT.isReady() )
   {
     mode = MODE_LISTEN_SLAVE_LOCAL;

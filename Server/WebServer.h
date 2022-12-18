@@ -11,6 +11,7 @@ class WebServer
     ControlValues*  MPCtrl = nullptr;
     void ServeRoot();
     void ServeRead();
+    void ServeWrite();
     void ServeNotFound();
 };
 

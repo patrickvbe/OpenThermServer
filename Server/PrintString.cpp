@@ -31,7 +31,7 @@ void PrintTime(unsigned long seconds, Print& target)
   hours %= 24;
   if ( days > 0 )
   {
-    target.print(hours);
+    target.print(days);
     target.print("d ");
   }
   if ( days > 0 || hours > 0 )
