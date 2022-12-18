@@ -24,6 +24,9 @@ void WebServer::Init(ControlValues& ctrl)
   server.on("/read", []() {
     webserver.ServeRead();
   });
+  server.on("/write", []() {
+    webserver.ServeWrite();
+  });
   server.onNotFound([]() {
     webserver.ServeNotFound();
   });
@@ -103,26 +106,53 @@ void WebServer::ServeRoot()
 void WebServer::ServeRead()
 {
   long id = server.arg("id").toInt();
-  long value = strtol(server.arg("value").c_str(), nullptr, 0); // Supports dec/oct/hex
-  PrintString result;
-  result += id;
-  result += " / ";
-  result += value;
-  result += "\n";
+  long data = strtol(server.arg("data").c_str(), nullptr, 0); // Supports dec/oct/hex
   auto pnode = MPCtrl->FindId(id);
-  if ( pnode && /*(pnode->stype == OpenThermMessageType::WRITE_DATA || pnode->send == value) &&*/ MPCtrl->timestampsec - pnode->timestamp < 30 )  // Less than 30s old, use the existing value.
+  if ( pnode && (pnode->stype == OpenThermMessageType::WRITE_DATA || pnode->send == data) && MPCtrl->timestampsec - pnode->timestamp < 30 )  // Less than 30s old, use the existing value.
   {
+    PrintString result;
     OpenTherm::ValueType vtype;
     auto str = OpenTherm::messageIDToString((OpenThermMessageID)id, vtype);
     result += str;
     result.print("=");
     AppendOTValue(result, vtype, pnode->rec);
+    server.send(200, "text/plain", result);
   }
   else
   {
     // Send request and keep scanning for a few seconds for the response.
+    if ( MPCtrl->request_status == ControlValues::RequestStatus::Idle )
+    {
+      MPCtrl->insert_time = MPCtrl->timestampsec;
+      MPCtrl->pending_request = OpenTherm::buildRequest(OpenThermMessageType::READ_DATA, (OpenThermMessageID)id, data);
+      MPCtrl->request_status = ControlValues::RequestStatus::PendingSend;
+    }
+    else
+    {
+      server.send(503, "text/plain", "Error: A web request is still pending.");
+    }
   }
-  server.send(200, "text/plain", result);
+}
+
+void WebServer::ServeWrite()
+{
+  long id = server.arg("id").toInt();
+  long data = strtol(server.arg("data").c_str(), nullptr, 0); // Supports dec/oct/hex
+  // Send request and keep scanning for a few seconds for the response.
+  if ( id == 0 )
+  {
+    server.send(503, "text/plain", "Error: Invalid ID");
+  }
+  else if ( MPCtrl->request_status == ControlValues::RequestStatus::Idle )
+  {
+    MPCtrl->insert_time = MPCtrl->timestampsec;
+    MPCtrl->pending_request = OpenTherm::buildRequest(OpenThermMessageType::WRITE_DATA, (OpenThermMessageID)id, data);
+    MPCtrl->request_status = ControlValues::RequestStatus::PendingSend;
+  }
+  else
+  {
+    server.send(503, "text/plain", "Error: A web request is still pending.");
+  }
 }
 
 void WebServer::ServeNotFound()
@@ -144,4 +174,21 @@ void WebServer::ServeNotFound()
 void WebServer::Process()
 {
   server.handleClient();
+  if ( MPCtrl->request_status == ControlValues::RequestStatus::Received )
+  {
+    MPCtrl->request_status = ControlValues::RequestStatus::Idle;
+    PrintString result;
+    OpenTherm::ValueType vtype;
+    auto str = OpenTherm::messageIDToString(OpenTherm::getDataID(MPCtrl->response), vtype);
+    result += str;
+    result.print("=");
+    AppendOTValue(result, vtype, OpenTherm::getUInt(MPCtrl->response));
+    result += "!";
+    server.send(200, "text/plain", result);
+  }
+  else if ( MPCtrl->request_status != ControlValues::RequestStatus::Idle && MPCtrl->timestampsec - MPCtrl->insert_time > 5  )
+  {
+    MPCtrl->request_status = ControlValues::RequestStatus::Idle;
+    server.send(504, "text/plain", "Error: Failed to process the request.");
+  }
 }
