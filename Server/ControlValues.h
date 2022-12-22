@@ -25,18 +25,20 @@ struct ValueNode
 class ControlValues
 {
   public:
-    enum class RequestStatus { Idle, PendingSend, PendingReceive, Received};
+    enum class InsertStatus { Idle, PendingSend, PendingReceive, Received};
     unsigned long   timestampsec = 0;
 
     // Inserting request from 'outside' the monitor loop (e.g. web/rest/serial)
+    InsertStatus    insert_status = InsertStatus::Idle;
     unsigned long   insert_time;
-    unsigned long   pending_request = 0;
-    unsigned long   response = 0;
+    unsigned long   insert_request = 0;
+    unsigned long   insert_response = 0;
 
-    RequestStatus   request_status = RequestStatus::Idle;
+    // Linked list of historical values send / received.
     ValueNode       nodes[MAX_NODES];
     byte            nextFreeNode = 0;
     byte            head = NO_NODE;
+
     char            wifiStatus = '-'; // '-' not connected, '+' connected, '#' got IP.
 
     void ForNodes(std::function<bool(const ValueNode&)>);

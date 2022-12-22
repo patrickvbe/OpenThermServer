@@ -121,11 +121,11 @@ void WebServer::ServeRead()
   else
   {
     // Send request and keep scanning for a few seconds for the response.
-    if ( MPCtrl->request_status == ControlValues::RequestStatus::Idle )
+    if ( MPCtrl->insert_status == ControlValues::InsertStatus::Idle )
     {
       MPCtrl->insert_time = MPCtrl->timestampsec;
-      MPCtrl->pending_request = OpenTherm::buildRequest(OpenThermMessageType::READ_DATA, (OpenThermMessageID)id, data);
-      MPCtrl->request_status = ControlValues::RequestStatus::PendingSend;
+      MPCtrl->insert_request = OpenTherm::buildRequest(OpenThermMessageType::READ_DATA, (OpenThermMessageID)id, data);
+      MPCtrl->insert_status = ControlValues::InsertStatus::PendingSend;
     }
     else
     {
@@ -143,11 +143,11 @@ void WebServer::ServeWrite()
   {
     server.send(503, "text/plain", "Error: Invalid ID");
   }
-  else if ( MPCtrl->request_status == ControlValues::RequestStatus::Idle )
+  else if ( MPCtrl->insert_status == ControlValues::InsertStatus::Idle )
   {
     MPCtrl->insert_time = MPCtrl->timestampsec;
-    MPCtrl->pending_request = OpenTherm::buildRequest(OpenThermMessageType::WRITE_DATA, (OpenThermMessageID)id, data);
-    MPCtrl->request_status = ControlValues::RequestStatus::PendingSend;
+    MPCtrl->insert_request = OpenTherm::buildRequest(OpenThermMessageType::WRITE_DATA, (OpenThermMessageID)id, data);
+    MPCtrl->insert_status = ControlValues::InsertStatus::PendingSend;
   }
   else
   {
@@ -174,21 +174,20 @@ void WebServer::ServeNotFound()
 void WebServer::Process()
 {
   server.handleClient();
-  if ( MPCtrl->request_status == ControlValues::RequestStatus::Received )
+  if ( MPCtrl->insert_status == ControlValues::InsertStatus::Received )
   {
-    MPCtrl->request_status = ControlValues::RequestStatus::Idle;
+    MPCtrl->insert_status = ControlValues::InsertStatus::Idle;
     PrintString result;
     OpenTherm::ValueType vtype;
-    auto str = OpenTherm::messageIDToString(OpenTherm::getDataID(MPCtrl->response), vtype);
+    auto str = OpenTherm::messageIDToString(OpenTherm::getDataID(MPCtrl->insert_response), vtype);
     result += str;
     result.print("=");
-    AppendOTValue(result, vtype, OpenTherm::getUInt(MPCtrl->response));
-    result += "!";
+    AppendOTValue(result, vtype, OpenTherm::getUInt(MPCtrl->insert_response));
     server.send(200, "text/plain", result);
   }
-  else if ( MPCtrl->request_status != ControlValues::RequestStatus::Idle && MPCtrl->timestampsec - MPCtrl->insert_time > 5  )
+  else if ( MPCtrl->insert_status != ControlValues::InsertStatus::Idle && MPCtrl->timestampsec - MPCtrl->insert_time > 5  )
   {
-    MPCtrl->request_status = ControlValues::RequestStatus::Idle;
+    MPCtrl->insert_status = ControlValues::InsertStatus::Idle;
     server.send(504, "text/plain", "Error: Failed to process the request.");
   }
 }
