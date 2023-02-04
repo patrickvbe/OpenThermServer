@@ -34,6 +34,12 @@ class ControlValues
     unsigned long   insert_request = 0;
     unsigned long   insert_response = 0;
 
+    // When a request is received from the master while we already communicate to the slave,
+    // flag this here and save the request. When we received a response from the slave, we will
+    // foreward this message to the slave as normal.
+    bool            request_pending = false;
+    unsigned long   pending_request;
+
     // Linked list of historical values send / received.
     ValueNode       nodes[MAX_NODES];
     byte            nextFreeNode = 0;

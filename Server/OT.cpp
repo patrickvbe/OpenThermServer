@@ -126,6 +126,13 @@ void IRAM_ATTR sHandleInterrupt()
     sOT.handleInterrupt();
 }
 
+void forewardRequest(unsigned long request)
+{
+  LogRequest(request, *pctrl);
+  mOT.sendRequestAync(request);
+  mode = MODE_LISTEN_SLAVE;
+}
+
 void processRequest(unsigned long request, OpenThermResponseStatus status)
 {
   if ( status == OpenThermResponseStatus::SUCCESS )
@@ -135,12 +142,12 @@ void processRequest(unsigned long request, OpenThermResponseStatus status)
     if ( mode != MODE_LISTEN_MASTER )
     {
       if ( LOG ) Serial.println("Request received while local request pending.");
+      pctrl->request_pending = true;
+      pctrl->pending_request = request;      
     }
     else
     {
-      LogRequest(request, *pctrl);
-      mOT.sendRequestAync(request);
-      mode = MODE_LISTEN_SLAVE;
+      forewardRequest(request);
     }
   }
   else if (LOG) Serial.println("Invalid request");
@@ -152,7 +159,10 @@ void processResponse(unsigned long response, OpenThermResponseStatus status) {
     lastresponse = millis();
     LogMessage(response, "<- ");
     LogResponse(response, *pctrl);
-    if ( mode == MODE_LISTEN_SLAVE ) sOT.sendResponse(response);
+    if ( mode == MODE_LISTEN_SLAVE )
+    {
+      sOT.sendResponse(response);
+    }
     else if ( mode == MODE_LISTEN_SLAVE_LOCAL &&  pctrl->insert_status == ControlValues::InsertStatus::PendingReceive )
     {
       pctrl->insert_response = response;
@@ -165,6 +175,12 @@ void processResponse(unsigned long response, OpenThermResponseStatus status) {
   }
   mode = MODE_LISTEN_MASTER;
   lastlistenmaster = millis();
+  if ( pctrl->request_pending )
+  {
+    if ( LOG ) Serial.println("Delayed sending request.");
+    pctrl->request_pending = false;
+    forewardRequest(pctrl->pending_request);
+  }
 }
 
 void OT::Init(ControlValues& ctrl)
