@@ -1,5 +1,5 @@
 // python3 ~/.arduino15/packages/esp8266/hardware/esp8266/2.7.4/tools/espota.py -i 192.168.178.6 -p 8266 -f /tmp/arduino_build_661492/MainController.ino.bin
-// Going OTA...
+// LoLin (WeMos) D1 mini
 #include <ESP8266WiFi.h>
 #include <ESP8266mDNS.h>
 #include <WiFiUdp.h>

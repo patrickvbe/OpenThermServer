@@ -25,14 +25,11 @@ struct ValueNode
 class ControlValues
 {
   public:
-    enum class InsertStatus { Idle, PendingSend, PendingReceive, Received};
     unsigned long   timestampsec = 0;
 
     // Inserting request from 'outside' the monitor loop (e.g. web/rest/serial)
-    InsertStatus    insert_status = InsertStatus::Idle;
-    unsigned long   insert_time;
+    bool            insert_pending = false;
     unsigned long   insert_request = 0;
-    unsigned long   insert_response = 0;
 
     // When a request is received from the master while we already communicate to the slave,
     // flag this here and save the request. When we received a response from the slave, we will

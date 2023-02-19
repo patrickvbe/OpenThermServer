@@ -163,24 +163,12 @@ void processResponse(unsigned long response, OpenThermResponseStatus status) {
     {
       sOT.sendResponse(response);
     }
-    else if ( mode == MODE_LISTEN_SLAVE_LOCAL &&  pctrl->insert_status == ControlValues::InsertStatus::PendingReceive )
-    {
-      pctrl->insert_response = response;
-      pctrl->insert_status = ControlValues::InsertStatus::Received;
-    }
   }
   else
   {
     if (LOG) Serial.println(OpenTherm::statusToString(status));
   }
   mode = MODE_LISTEN_MASTER;
-  lastlistenmaster = millis();
-  if ( pctrl->request_pending )
-  {
-    if ( LOG ) Serial.println("Delayed sending request.");
-    pctrl->request_pending = false;
-    forewardRequest(pctrl->pending_request);
-  }
 }
 
 void OT::Init(ControlValues& ctrl)
@@ -248,15 +236,25 @@ void OT::Process()
   // Regular OT gateway logic.
   sOT.process();
   mOT.process();
-  if ( pctrl->insert_status == ControlValues::InsertStatus::PendingSend && mOT.isReady() )
+
+  // Do we have a pending request from the thermostat?
+  if ( pctrl->request_pending && mode == MODE_LISTEN_MASTER )
+  {
+    if ( LOG ) Serial.println("Delayed sending request.");
+    pctrl->request_pending = false;
+    forewardRequest(pctrl->pending_request);
+  }
+
+  // Do we have a pending request from another source?
+  if ( pctrl->insert_pending && mode == MODE_LISTEN_MASTER )
   {
     mode = MODE_LISTEN_SLAVE_LOCAL;
-    pctrl->insert_status = ControlValues::InsertStatus::PendingReceive;
+    pctrl->insert_pending = false;
     LogRequest(pctrl->insert_request, *pctrl);
     LogMessage(pctrl->insert_request, "#> ");
     mOT.sendRequestAync(pctrl->insert_request);
   }
-  if ( serial_status == SERIAL_WAITING_TO_SEND && mOT.isReady() )
+  if ( serial_status == SERIAL_WAITING_TO_SEND && mode == MODE_LISTEN_MASTER )
   {
     mode = MODE_LISTEN_SLAVE_LOCAL;
     unsigned long message = OpenTherm::buildRequest(serial_type, serial_id, serial_data);
@@ -267,11 +265,11 @@ void OT::Process()
 
   // Reset the message loop / mode if we did not get back into 'idle' within 1s.
   auto timestamp = millis();
+  if ( mode == MODE_LISTEN_MASTER ) lastlistenmaster = timestamp;
   if ( timestamp - lastlistenmaster > 1000 )
   {
     mode = MODE_LISTEN_MASTER;
   }
-  if ( mode == MODE_LISTEN_MASTER ) lastlistenmaster = timestamp;
 
   // Reboot when no messages have been process for REBOOT_TIMEOUT ms.  
   if ( (timestamp - lastrequest) > REBOOT_TIMEOUT || (timestamp - lastresponse) > REBOOT_TIMEOUT )
