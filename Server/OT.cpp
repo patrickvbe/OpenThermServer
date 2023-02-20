@@ -105,7 +105,7 @@ void LogResponse(unsigned long msg, ControlValues& ctrl)
 
 void LogMessage(unsigned long message, const char* prefix)
 {
-  if ( LOG || mode == MODE_LISTEN_SLAVE_LOCAL )
+  if ( LOG )
   {
     Serial.print(prefix);
     Serial.print(OpenTherm::messageTypeToString(OpenTherm::getMessageType(message)));
@@ -139,7 +139,7 @@ void processRequest(unsigned long request, OpenThermResponseStatus status)
   {
     lastrequest = millis();
     LogMessage(request, "-> ");
-    if ( mode != MODE_LISTEN_MASTER )
+    if ( mode != MODE_LISTEN_MASTER || !mOT.isReady() )
     {
       if ( LOG ) Serial.println("Request received while local request pending.");
       pctrl->request_pending = true;
@@ -238,7 +238,7 @@ void OT::Process()
   mOT.process();
 
   // Do we have a pending request from the thermostat?
-  if ( pctrl->request_pending && mode == MODE_LISTEN_MASTER )
+  if ( pctrl->request_pending && mode == MODE_LISTEN_MASTER && mOT.isReady() )
   {
     if ( LOG ) Serial.println("Delayed sending request.");
     pctrl->request_pending = false;
@@ -246,7 +246,7 @@ void OT::Process()
   }
 
   // Do we have a pending request from another source?
-  if ( pctrl->insert_pending && mode == MODE_LISTEN_MASTER )
+  if ( pctrl->insert_pending && mode == MODE_LISTEN_MASTER && mOT.isReady() )
   {
     mode = MODE_LISTEN_SLAVE_LOCAL;
     pctrl->insert_pending = false;
