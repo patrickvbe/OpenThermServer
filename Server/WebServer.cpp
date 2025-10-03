@@ -8,7 +8,7 @@ static ESP8266WebServer server(80);
 WebServer webserver;
 
 static const char* pageheader = "<html><head><style>"
-"body { zoom: 3; font-family: Arial;}"
+"body { zoom: 1; font-family: Arial;}"
 " .head { background-color: lightblue; text-align: center; font-size: 40px;}"
 " .T { font-size: 100px;}"
 "table, th, td {border: 1px solid black; border-collapse: collapse;}"

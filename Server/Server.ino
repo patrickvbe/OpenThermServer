@@ -11,7 +11,7 @@ const char* ssid = STASSID;
 const char* password = STAPSK;
 bool doingota = false;
 
-#define DEBUG
+//#define DEBUG
 #ifdef DEBUG
   #define DEBUGONLY(statement) statement;
 #else
