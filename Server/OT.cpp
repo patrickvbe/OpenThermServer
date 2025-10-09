@@ -148,6 +148,15 @@ void processRequest(unsigned long request, OpenThermResponseStatus status)
     else
     {
       forewardRequest(request);
+      // Update MQTT
+      auto msg_id = OpenTherm::getDataID(request);
+      if ( msg_id == OpenThermMessageID::Tr ) {
+        pctrl->troom_received = OpenTherm::getFloat(request) * 10;
+      } else if ( msg_id == OpenThermMessageID::TrSet ) {
+        pctrl->tset_received = OpenTherm::getFloat(request) * 10;
+      } else if ( msg_id == OpenThermMessageID::RelModLevel ) {
+        pctrl->modlevel_received = OpenTherm::getFloat(request) * 100;
+      }
     }
   }
   else if (LOG) Serial.println("Invalid request");

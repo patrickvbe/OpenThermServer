@@ -7,6 +7,7 @@
 #define CONTROLVALUES_H
 
 #define NO_NODE 0xFF
+#define INVALID_TEMP -1000
 
 struct ValueNode
 {
@@ -41,6 +42,15 @@ class ControlValues
     ValueNode       nodes[MAX_NODES];
     byte            nextFreeNode = 0;
     byte            head = NO_NODE;
+
+    // MQTT values
+    int16_t         tset_reported = INVALID_TEMP;
+    int16_t         tset_received = INVALID_TEMP;
+    int16_t         troom_reported = INVALID_TEMP;
+    int16_t         troom_received = INVALID_TEMP;
+    int16_t         modlevel_reported = -1;
+    int16_t         modlevel_received = 0;
+    int16_t         toffset = 0;
 
     char            wifiStatus = '-'; // '-' not connected, '+' connected, '#' got IP.
 

@@ -33,6 +33,26 @@ unsigned long lastsecmillis;
 OT ot;
 
 //////////////////////////////////////////////////////////////
+// MQTT support
+//////////////////////////////////////////////////////////////
+#include <ArduinoHA.h>
+WiFiClient client;
+HADevice device("OpenTherm");
+HAMqtt mqtt(client, device);
+HAHVAC hvac("thermostaat", HAHVAC::TargetTemperatureFeature);
+HASensorNumber mqtt_modlevel("ModLevel", HABaseDeviceType::PrecisionP1);
+HANumber mqtt_toffset("TOffset", HABaseDeviceType::PrecisionP1);
+unsigned long lastFullMqttUpdate = millis();
+#define MQTT_FULL_UPDATE_INTERVAL 15000
+
+void reportFullMqttState() {
+  if (ctrl.tset_reported != INVALID_TEMP) hvac.setTargetTemperature(ctrl.tset_reported/10.0F);
+  if (ctrl.troom_reported != INVALID_TEMP) hvac.setCurrentTemperature(ctrl.troom_reported / 10.0F);
+  if (ctrl.modlevel_reported >= 0) mqtt_modlevel.setValue(ctrl.modlevel_reported);
+  mqtt_toffset.setState(ctrl.toffset/10.0F);
+}
+
+//////////////////////////////////////////////////////////////
 // WiFi
 //////////////////////////////////////////////////////////////
 WiFiEventHandler mConnectHandler, mDisConnectHandler, mGotIpHandler;
@@ -96,6 +116,34 @@ void setup()
   });
 
   //////////////////////////////////////////////////////////////
+  // MQTT configuration
+  //////////////////////////////////////////////////////////////
+  device.enableSharedAvailability();
+  device.enableLastWill();
+  device.enableExtendedUniqueIds();
+  device.setName("OpenTherm");
+  mqtt.onConnected([]() { reportFullMqttState(); });
+  hvac.onTargetTemperatureCommand([](HANumeric temperature, HAHVAC* sender) {
+    // Nog even niets...
+  });
+  hvac.setMinTemp(10);
+  hvac.setMaxTemp(30);
+  hvac.setTempStep(0.5);
+  hvac.setName("thermostaat");
+  hvac.setMode(HAHVAC::HeatMode);
+  mqtt_toffset.setDeviceClass("temperature");
+  mqtt_toffset.setName("temperature offset");
+  mqtt_toffset.setMin(-5.0);
+  mqtt_toffset.setMax(5.0);
+  mqtt_toffset.setStep(0.1);
+  mqtt_toffset.onCommand([](HANumeric offset, HANumber* sender) {
+    ctrl.toffset = offset.toFloat() * 10;
+  });
+  mqtt_modlevel.setName("modulation level");
+  mqtt_modlevel.setUnitOfMeasurement("%");
+  mqtt.begin(BROKER_ADDR, broker_login, broker_pwd);
+
+  //////////////////////////////////////////////////////////////
   // 
   //////////////////////////////////////////////////////////////
   ot.Init(ctrl);
@@ -122,6 +170,11 @@ void loop()
   lastsecmillis += deltasec * 1000;
 
   //////////////////////////////////////////////////////////////
+  // MQTT
+  //////////////////////////////////////////////////////////////
+  mqtt.loop();
+
+  //////////////////////////////////////////////////////////////
   // Open Therm
   //////////////////////////////////////////////////////////////
   ot.Process();
@@ -140,6 +193,28 @@ void loop()
     lastWiFiTry = timestamp;
     WiFi.disconnect() ;
     WiFi.begin ( ssid, password );  
+  }
+  
+  //////////////////////////////////////////////////////////////
+  // MQTT
+  //////////////////////////////////////////////////////////////
+  if (ctrl.tset_reported != ctrl.tset_received) {
+    ctrl.tset_reported = ctrl.tset_received;
+    hvac.setTargetTemperature(ctrl.tset_reported/10.0F);
+  }
+  if (ctrl.troom_reported != ctrl.troom_received ) {
+    ctrl.troom_reported = ctrl.troom_received;
+    hvac.setCurrentTemperature(ctrl.troom_reported / 10.0F);
+  }
+  if (ctrl.modlevel_reported != ctrl.modlevel_received) {
+    ctrl.modlevel_reported = ctrl.modlevel_received;
+    mqtt_modlevel.setValue(ctrl.modlevel_reported);
+  }
+
+  // Prevent mqtt form invalidating values when not updated.
+  if ( (timestamp - lastFullMqttUpdate) > MQTT_FULL_UPDATE_INTERVAL )
+  {
+    reportFullMqttState();
   }
 
   //////////////////////////////////////////////////////////////

@@ -69,6 +69,8 @@ void WebServer::ServeRoot()
   PrintString result(pageheader);
   result += "<div class=\"head\">Historie</div><br>Uptime: ";
   PrintTime(MPCtrl->timestampsec, result);
+  result += "<br>TOffset: ";
+  result.print(MPCtrl->toffset);
   result += "<br><table><tr><th>tijd</th><th>id</th><th>send</th><th>rec</th></tr>";
   MPCtrl->ForNodes([&](const ValueNode& node)
   {
