@@ -40,7 +40,7 @@ WiFiClient client;
 HADevice device("OpenTherm");
 HAMqtt mqtt(client, device);
 HAHVAC hvac("thermostaat", HAHVAC::TargetTemperatureFeature);
-HASensorNumber mqtt_modlevel("ModLevel", HABaseDeviceType::PrecisionP1);
+HASensorNumber mqtt_modlevel("ModLevel", HABaseDeviceType::PrecisionP0);
 HANumber mqtt_toffset("TOffset", HABaseDeviceType::PrecisionP1);
 unsigned long lastFullMqttUpdate = millis();
 #define MQTT_FULL_UPDATE_INTERVAL 15000

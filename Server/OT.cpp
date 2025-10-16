@@ -147,16 +147,16 @@ void processRequest(unsigned long request, OpenThermResponseStatus status)
     }
     else
     {
-      forewardRequest(request);
-      // Update MQTT
+      // Update MQTT and apply offset
       auto msg_id = OpenTherm::getDataID(request);
       if ( msg_id == OpenThermMessageID::Tr ) {
         pctrl->troom_received = OpenTherm::getFloat(request) * 10;
       } else if ( msg_id == OpenThermMessageID::TrSet ) {
         pctrl->tset_received = OpenTherm::getFloat(request) * 10;
-      } else if ( msg_id == OpenThermMessageID::RelModLevel ) {
-        pctrl->modlevel_received = OpenTherm::getFloat(request) * 100;
+        request = OpenTherm::buildRequest(OpenThermMessageType::WRITE_DATA, OpenThermMessageID::TrSet, OpenTherm::temperatureToData((pctrl->tset_received + pctrl->toffset)/10.0));
       }
+      // Forward to the thermostat.
+      forewardRequest(request);
     }
   }
   else if (LOG) Serial.println("Invalid request");
@@ -167,6 +167,14 @@ void processResponse(unsigned long response, OpenThermResponseStatus status) {
   {
     lastresponse = millis();
     LogMessage(response, "<- ");
+    // Update MQTT
+    auto msg_id = OpenTherm::getDataID(response);
+    if ( msg_id == OpenThermMessageID::RelModLevel ) {
+      pctrl->modlevel_received = OpenTherm::getFloat(response);
+    } else if ( msg_id == OpenThermMessageID::TrSet ) {
+      // We need to acknowledge the original value.
+      response = OpenTherm::buildResponse(OpenThermMessageType::WRITE_ACK, OpenThermMessageID::TrSet, OpenTherm::temperatureToData(pctrl->tset_received / 10.0));
+    }
     LogResponse(response, *pctrl);
     if ( mode == MODE_LISTEN_SLAVE )
     {
